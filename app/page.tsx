@@ -1,7 +1,12 @@
 import Dashboard, { Lead } from "@/components/Dashboard";
 
 async function getLeads(): Promise<Lead[]> {
-  const res = await fetch(process.env.API_URL!, { next: { revalidate: 3600 } });
+  const res = await fetch(process.env.API_URL!, {
+    next: { revalidate: 3600 },
+    headers: {
+      "x-api-key": process.env.API_SECRET_KEY!,
+    },
+  });
   if (!res.ok) throw new Error(`Falha ao buscar leads: ${res.status}`);
   return res.json();
 }
