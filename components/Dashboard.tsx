@@ -11,7 +11,7 @@ import {
   Line,
   CartesianGrid,
 } from "recharts";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import styles from "./Dashboard.module.css";
 
 export interface Lead {
@@ -201,6 +201,18 @@ const HBar = ({
   </div>
 );
 
+// ── types ─────────────────────────────────────────────────────────────────────
+
+type Preset = "7d" | "30d" | "mes" | "custom" | "all";
+
+const PRESETS: { key: Preset; label: string }[] = [
+  { key: "7d",     label: "7 dias"        },
+  { key: "30d",    label: "30 dias"       },
+  { key: "mes",    label: "Este mês"      },
+  { key: "custom", label: "Personalizado" },
+  { key: "all",    label: "Tudo"          },
+];
+
 // ── main component ────────────────────────────────────────────────────────────
 
 export default function Dashboard({ leads }: Props) {
@@ -209,28 +221,65 @@ export default function Dashboard({ leads }: Props) {
     setTimeout(() => setMounted(true), 60);
   }, []);
 
+  const [preset, setPreset] = useState<Preset>("all");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd]     = useState("");
+
   const anim = (delay: number): React.CSSProperties => ({
     opacity: mounted ? 1 : 0,
     transform: mounted ? "translateY(0)" : "translateY(20px)",
     transition: `opacity 0.55s ease ${delay}ms, transform 0.55s ease ${delay}ms`,
   });
 
-  const qualified = leads.filter(
+  // ── filtered leads ─────────────────────────────────────────────────────────
+
+  const filteredLeads = useMemo(() => {
+    if (preset === "all") return leads;
+
+    const now = new Date();
+    let start: Date;
+    let end: Date = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+
+    if (preset === "7d") {
+      start = new Date(now);
+      start.setDate(start.getDate() - 6);
+      start.setHours(0, 0, 0, 0);
+    } else if (preset === "30d") {
+      start = new Date(now);
+      start.setDate(start.getDate() - 29);
+      start.setHours(0, 0, 0, 0);
+    } else if (preset === "mes") {
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else {
+      if (!customStart || !customEnd) return leads;
+      start = new Date(customStart + "T00:00:00");
+      end   = new Date(customEnd   + "T23:59:59");
+    }
+
+    return leads.filter(l => {
+      const d = new Date(l.created_at);
+      return d >= start && d <= end;
+    });
+  }, [leads, preset, customStart, customEnd]);
+
+  // ── derived data ───────────────────────────────────────────────────────────
+
+  const qualified = filteredLeads.filter(
     (l) => l.email && l.company_size && l.annual_revenue
   ).length;
-  const peakDay = byDay(leads).reduce(
+  const peakDay = byDay(filteredLeads).reduce(
     (a, b) => (b.total > a.total ? b : a),
     { date: "—", total: 0 }
   );
 
-  const dayData = byDay(leads);
-  const revData = byRevenue(leads);
-  const sizeData = bySize(leads);
-  const cargoData = byCargo(leads);
-  const sourceData = bySource(leads);
+  const dayData    = byDay(filteredLeads);
+  const revData    = byRevenue(filteredLeads);
+  const sizeData   = bySize(filteredLeads);
+  const cargoData  = byCargo(filteredLeads);
+  const sourceData = bySource(filteredLeads);
 
-  const sizeMax = Math.max(...sizeData.map((d) => d.total), 1);
-  const cargoMax = Math.max(...cargoData.map((d) => d.total), 1);
+  const sizeMax   = Math.max(...sizeData.map((d) => d.total), 1);
+  const cargoMax  = Math.max(...cargoData.map((d) => d.total), 1);
   const sourceMax = Math.max(...sourceData.map((d) => d.total), 1);
 
   const today = new Date().toLocaleDateString("pt-BR", {
@@ -240,8 +289,8 @@ export default function Dashboard({ leads }: Props) {
   });
 
   const dateRange = (() => {
-    if (!leads.length) return "";
-    const dates = leads.map((l) => l.created_at).sort();
+    if (!filteredLeads.length) return "";
+    const dates = filteredLeads.map((l) => l.created_at).sort();
     const fmt = (d: string) =>
       new Date(d)
         .toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
@@ -273,178 +322,221 @@ export default function Dashboard({ leads }: Props) {
         </div>
       </div>
 
-      <div className={styles.body}>
-
-        {/* ── KPIs ───────────────────────────────────────────────── */}
-        <div className={styles.kpiGrid} style={anim(80)}>
-          {[
-            {
-              label: "Total de Leads",
-              value: leads.length,
-              sub: "todos os registros",
-            },
-            {
-              label: "Qualificados",
-              value: qualified,
-              sub: "e-mail + tamanho + receita",
-            },
-            {
-              label: "Taxa de qualif.",
-              value: leads.length
-                ? `${Math.round((qualified / leads.length) * 100)}%`
-                : "—",
-              sub: "com dados completos",
-            },
-            {
-              label: "Pico diário",
-              value: peakDay.total || "—",
-              sub: peakDay.date !== "—" ? `${peakDay.date} · maior volume` : "sem dados",
-            },
-          ].map((k) => (
-            <div key={k.label} className={styles.kpiCard}>
-              <span className={styles.kpiLabel}>{k.label}</span>
-              <span className={styles.kpiValue}>{k.value}</span>
-              <span className={styles.kpiSub}>{k.sub}</span>
-            </div>
+      {/* ── Filter Bar ─────────────────────────────────────────── */}
+      <div className={styles.filterBar} style={anim(40)}>
+        <div className={styles.filterChips}>
+          {PRESETS.map(p => (
+            <button
+              key={p.key}
+              className={`${styles.chip} ${preset === p.key ? styles.chipActive : ""}`}
+              onClick={() => setPreset(p.key)}
+            >
+              {p.label}
+            </button>
           ))}
         </div>
-
-        {/* ── Volume por Dia ─────────────────────────────────────── */}
-        <div className={styles.panel} style={anim(160)}>
-          <div className={styles.sectionTitle}>Volume por Dia</div>
-          <ResponsiveContainer width="100%" height={180}>
-            <LineChart
-              data={dayData}
-              margin={{ top: 4, right: 8, bottom: 0, left: -22 }}
-            >
-              <CartesianGrid
-                stroke={C.gridLine}
-                vertical={false}
-              />
-              <XAxis dataKey="date" {...axisProps} />
-              <YAxis allowDecimals={false} {...axisProps} />
-              <Tooltip content={<CustomTooltip />} />
-              <Line
-                type="monotone"
-                dataKey="total"
-                stroke={C.primary}
-                strokeWidth={2.5}
-                dot={{ fill: C.primary, r: 4, strokeWidth: 0 }}
-                activeDot={{ r: 6, fill: C.primary, strokeWidth: 2, stroke: "#fff" }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* ── Faturamento + Tamanho ──────────────────────────────── */}
-        <div className={styles.twoCol} style={anim(240)}>
-          <div className={styles.panel}>
-            <div className={styles.sectionTitle}>Faturamento Anual</div>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart
-                data={revData}
-                margin={{ top: 0, right: 0, bottom: 0, left: -26 }}
-                barSize={28}
-              >
-                <XAxis
-                  dataKey="label"
-                  {...axisProps}
-                  tick={{ ...axisProps.tick, fontSize: 9.5 }}
-                />
-                <YAxis allowDecimals={false} {...axisProps} />
-                <Tooltip
-                  content={<CustomTooltip />}
-                  cursor={{ fill: "rgba(28, 25, 22, 0.04)" }}
-                />
-                <Bar
-                  dataKey="total"
-                  fill={C.primary}
-                  radius={[3, 3, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+        {preset === "custom" && (
+          <div className={styles.dateInputs}>
+            <input
+              type="date"
+              className={styles.dateInput}
+              value={customStart}
+              max={customEnd || undefined}
+              onChange={e => setCustomStart(e.target.value)}
+            />
+            <span className={styles.dateSep}>→</span>
+            <input
+              type="date"
+              className={styles.dateInput}
+              value={customEnd}
+              min={customStart || undefined}
+              onChange={e => setCustomEnd(e.target.value)}
+            />
           </div>
+        )}
+      </div>
 
-          <div className={styles.panel}>
-            <div className={styles.sectionTitle}>Tamanho da Empresa</div>
-            <div style={{ marginTop: 4 }}>
-              {sizeData.map((d) => (
-                <HBar key={d.label} {...d} max={sizeMax} />
+      <div className={styles.body}>
+
+        {filteredLeads.length === 0 ? (
+          <div className={styles.emptyState}>
+            Nenhum lead no período selecionado.
+          </div>
+        ) : (
+          <>
+            {/* ── KPIs ─────────────────────────────────────────────── */}
+            <div className={styles.kpiGrid} style={anim(120)}>
+              {[
+                {
+                  label: "Total de Leads",
+                  value: filteredLeads.length,
+                  sub: preset === "all" ? "todos os registros" : "no período filtrado",
+                },
+                {
+                  label: "Qualificados",
+                  value: qualified,
+                  sub: "e-mail + tamanho + receita",
+                },
+                {
+                  label: "Taxa de qualif.",
+                  value: filteredLeads.length
+                    ? `${Math.round((qualified / filteredLeads.length) * 100)}%`
+                    : "—",
+                  sub: "com dados completos",
+                },
+                {
+                  label: "Pico diário",
+                  value: peakDay.total || "—",
+                  sub: peakDay.date !== "—" ? `${peakDay.date} · maior volume` : "sem dados",
+                },
+              ].map((k) => (
+                <div key={k.label} className={styles.kpiCard}>
+                  <span className={styles.kpiLabel}>{k.label}</span>
+                  <span className={styles.kpiValue}>{k.value}</span>
+                  <span className={styles.kpiSub}>{k.sub}</span>
+                </div>
               ))}
             </div>
-          </div>
-        </div>
 
-        {/* ── Cargo + Origem ─────────────────────────────────────── */}
-        <div className={styles.twoCol} style={anim(320)}>
-          <div className={styles.panel}>
-            <div className={styles.sectionTitle}>Cargo / Função</div>
-            <div style={{ marginTop: 4 }}>
-              {cargoData.map((d) => (
-                <HBar key={d.label} {...d} max={cargoMax} />
-              ))}
+            {/* ── Volume por Dia ───────────────────────────────────── */}
+            <div className={styles.panel} style={anim(200)}>
+              <div className={styles.sectionTitle}>Volume por Dia</div>
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart
+                  data={dayData}
+                  margin={{ top: 4, right: 8, bottom: 0, left: -22 }}
+                >
+                  <CartesianGrid
+                    stroke={C.gridLine}
+                    vertical={false}
+                  />
+                  <XAxis dataKey="date" {...axisProps} />
+                  <YAxis allowDecimals={false} {...axisProps} />
+                  <Tooltip content={<CustomTooltip />} />
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    stroke={C.primary}
+                    strokeWidth={2.5}
+                    dot={{ fill: C.primary, r: 4, strokeWidth: 0 }}
+                    activeDot={{ r: 6, fill: C.primary, strokeWidth: 2, stroke: "#fff" }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
-          </div>
 
-          <div className={styles.panel}>
-            <div className={styles.sectionTitle}>Origem do Lead</div>
-            <div style={{ marginTop: 4 }}>
-              {sourceData.map((d) => (
-                <HBar key={d.label} {...d} max={sourceMax} />
-              ))}
+            {/* ── Faturamento + Tamanho ────────────────────────────── */}
+            <div className={styles.twoCol} style={anim(280)}>
+              <div className={styles.panel}>
+                <div className={styles.sectionTitle}>Faturamento Anual</div>
+                <ResponsiveContainer width="100%" height={180}>
+                  <BarChart
+                    data={revData}
+                    margin={{ top: 0, right: 0, bottom: 0, left: -26 }}
+                    barSize={28}
+                  >
+                    <XAxis
+                      dataKey="label"
+                      {...axisProps}
+                      tick={{ ...axisProps.tick, fontSize: 9.5 }}
+                    />
+                    <YAxis allowDecimals={false} {...axisProps} />
+                    <Tooltip
+                      content={<CustomTooltip />}
+                      cursor={{ fill: "rgba(28, 25, 22, 0.04)" }}
+                    />
+                    <Bar
+                      dataKey="total"
+                      fill={C.primary}
+                      radius={[3, 3, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              <div className={styles.panel}>
+                <div className={styles.sectionTitle}>Tamanho da Empresa</div>
+                <div style={{ marginTop: 4 }}>
+                  {sizeData.map((d) => (
+                    <HBar key={d.label} {...d} max={sizeMax} />
+                  ))}
+                </div>
+              </div>
             </div>
-            {sourceData.length > 0 && (
-              <div className={styles.sourceNote}>
-                {sourceData.map((d) => (
-                  <div key={d.label}>
-                    {d.label}:{" "}
-                    <strong style={{ color: C.text }}>
-                      {leads.length
-                        ? Math.round((d.total / leads.length) * 100)
-                        : 0}
-                      %
-                    </strong>{" "}
-                    do total
+
+            {/* ── Cargo + Origem ───────────────────────────────────── */}
+            <div className={styles.twoCol} style={anim(360)}>
+              <div className={styles.panel}>
+                <div className={styles.sectionTitle}>Cargo / Função</div>
+                <div style={{ marginTop: 4 }}>
+                  {cargoData.map((d) => (
+                    <HBar key={d.label} {...d} max={cargoMax} />
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.panel}>
+                <div className={styles.sectionTitle}>Origem do Lead</div>
+                <div style={{ marginTop: 4 }}>
+                  {sourceData.map((d) => (
+                    <HBar key={d.label} {...d} max={sourceMax} />
+                  ))}
+                </div>
+                {sourceData.length > 0 && (
+                  <div className={styles.sourceNote}>
+                    {sourceData.map((d) => (
+                      <div key={d.label}>
+                        {d.label}:{" "}
+                        <strong style={{ color: C.text }}>
+                          {filteredLeads.length
+                            ? Math.round((d.total / filteredLeads.length) * 100)
+                            : 0}
+                          %
+                        </strong>{" "}
+                        do total
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* ── Leads Recentes ───────────────────────────────────── */}
+            <div className={styles.panel} style={anim(440)}>
+              <div className={styles.sectionTitle}>Leads Recentes</div>
+              <div className={styles.leadsList}>
+                {filteredLeads.slice(0, 10).map((l) => (
+                  <div key={l.id} className={styles.leadRow}>
+                    <div>
+                      <div className={styles.leadName}>{l.name || "—"}</div>
+                      <div className={styles.leadMeta}>
+                        {normalizeTitle(l.job_title)}
+                        {l.company_name ? ` · ${l.company_name}` : ""}
+                      </div>
+                    </div>
+                    <div className={styles.leadRight}>
+                      <span className={styles.tag}>
+                        {new Date(l.created_at).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "2-digit",
+                        })}
+                      </span>
+                      {l.source && (
+                        <div className={styles.leadSource}>{l.source}</div>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
-            )}
-          </div>
-        </div>
+            </div>
 
-        {/* ── Leads Recentes ─────────────────────────────────────── */}
-        <div className={styles.panel} style={anim(400)}>
-          <div className={styles.sectionTitle}>Leads Recentes</div>
-          <div className={styles.leadsList}>
-            {leads.slice(0, 10).map((l) => (
-              <div key={l.id} className={styles.leadRow}>
-                <div>
-                  <div className={styles.leadName}>{l.name || "—"}</div>
-                  <div className={styles.leadMeta}>
-                    {normalizeTitle(l.job_title)}
-                    {l.company_name ? ` · ${l.company_name}` : ""}
-                  </div>
-                </div>
-                <div className={styles.leadRight}>
-                  <span className={styles.tag}>
-                    {new Date(l.created_at).toLocaleDateString("pt-BR", {
-                      day: "2-digit",
-                      month: "2-digit",
-                    })}
-                  </span>
-                  {l.source && (
-                    <div className={styles.leadSource}>{l.source}</div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Footer ─────────────────────────────────────────────── */}
-        <div className={styles.footer} style={anim(480)}>
-          Dalton Lab · Uso Interno · {leads.length} registros
-        </div>
+            {/* ── Footer ───────────────────────────────────────────── */}
+            <div className={styles.footer} style={anim(520)}>
+              Dalton Lab · Uso Interno · {filteredLeads.length} registros
+              {preset !== "all" && " (filtrado)"}
+            </div>
+          </>
+        )}
 
       </div>
     </div>
