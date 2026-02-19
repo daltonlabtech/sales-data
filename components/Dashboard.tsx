@@ -221,8 +221,8 @@ export default function Dashboard({ leads }: Props) {
     setTimeout(() => setMounted(true), 60);
   }, []);
 
-  const [preset, setPreset] = useState<Preset>("all");
-  const [customStart, setCustomStart] = useState("");
+  const [preset, setPreset] = useState<Preset>("custom");
+  const [customStart, setCustomStart] = useState("2026-02-13");
   const [customEnd, setCustomEnd]     = useState("");
 
   const anim = (delay: number): React.CSSProperties => ({
@@ -251,9 +251,9 @@ export default function Dashboard({ leads }: Props) {
     } else if (preset === "mes") {
       start = new Date(now.getFullYear(), now.getMonth(), 1);
     } else {
-      if (!customStart || !customEnd) return leads;
-      start = new Date(customStart + "T00:00:00");
-      end   = new Date(customEnd   + "T23:59:59");
+      if (!customStart && !customEnd) return leads;
+      start = customStart ? new Date(customStart + "T00:00:00") : new Date(0);
+      end   = customEnd   ? new Date(customEnd   + "T23:59:59") : end;
     }
 
     return leads.filter(l => {
