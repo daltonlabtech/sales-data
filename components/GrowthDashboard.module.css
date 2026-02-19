@@ -1,0 +1,58 @@
+/* ── Daily table ─────────────────────────────────────────────── */
+.dailyTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: var(--font-body);
+}
+
+.dailyTable th {
+  text-align: left;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 0 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dailyTable th:not(:first-child) {
+  text-align: right;
+}
+
+.dailyTable td {
+  padding: 10px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+.dailyTable td:not(:first-child) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.dailyTable tr:last-child td {
+  border-bottom: none;
+}
+
+.dailyTable tr:hover td {
+  background: rgba(2, 132, 199, 0.03);
+}
+
+/* ── Conversion rate badge ───────────────────────────────────── */
+.convRate {
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 4px 0 2px;
+}
+
+.convArrow {
+  font-size: 10px;
+  color: var(--border-strong);
+  display: block;
+  text-align: center;
+  line-height: 1;
+  margin: 2px 0;
+}

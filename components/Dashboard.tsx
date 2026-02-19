@@ -312,10 +312,7 @@ export default function Dashboard({ leads }: Props) {
     <div className={styles.page}>
       {/* ── Header ─────────────────────────────────────────────── */}
       <div className={styles.header} style={anim(0)}>
-        <div className={styles.headerLeft}>
-          <span className={styles.logo}>Dalton Lab</span>
-          <div className={styles.title}>Painel de Leads</div>
-        </div>
+        <div className={styles.title}>Painel de Leads</div>
         <div className={styles.meta}>
           <div>{today}</div>
           {dateRange && <div>{dateRange}</div>}

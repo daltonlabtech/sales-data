@@ -2,28 +2,7 @@
    Dashboard.module.css — Dalton Lab · Mobile-first · Light Mode
    ───────────────────────────────────────────────────────────── */
 
-/* ── Design tokens (light mode) ─────────────────────────────── */
 .page {
-  --bg: #F5F3EF;
-  --surface: #FFFFFF;
-  --border: rgba(28, 25, 22, 0.09);
-  --border-strong: rgba(28, 25, 22, 0.16);
-  --text: #1C1916;
-  --text-secondary: #6B7280;
-  --text-muted: #A8A29E;
-  --primary: #0284C7;
-  --primary-bg: rgba(2, 132, 199, 0.08);
-  --primary-dark: #0369A1;
-  --success: #16A34A;
-  --warning: #D97706;
-  --error: #DC2626;
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.04);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
-  --shadow-hover: 0 8px 28px rgba(0, 0, 0, 0.11), 0 2px 6px rgba(0, 0, 0, 0.05);
-  --radius: 12px;
-  --font-display: var(--font-space-grotesk, 'Space Grotesk'), sans-serif;
-  --font-body: var(--font-inter, 'Inter'), sans-serif;
-
   min-height: 100vh;
   background: var(--bg);
   font-family: var(--font-body);
@@ -32,32 +11,12 @@
 
 /* ── Header ─────────────────────────────────────────────────── */
 .header {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--border);
   padding: 14px 16px;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 10px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.headerLeft {
-  min-width: 0;
-}
-
-.logo {
-  font-size: 9px;
-  letter-spacing: 0.22em;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  margin-bottom: 4px;
-  font-weight: 600;
-  display: block;
 }
 
 .title {
