@@ -159,6 +159,7 @@ export default function GrowthDashboard({ data }: Props) {
 
   const totalInvest = data.reduce((s, r) => s + r.Investimento, 0);
   const totalLeads = data.reduce((s, r) => s + r.Leads, 0);
+  const totalMQLs = data.reduce((s, r) => s + safeNum(r.MQLs), 0);
   const totalSQLs = data.reduce((s, r) => s + safeNum(r.SQLs), 0);
   const totalAlcance = data.reduce((s, r) => s + r.Alcance, 0);
   const totalCliques = data.reduce((s, r) => s + r.Cliques, 0);
@@ -214,7 +215,7 @@ export default function GrowthDashboard({ data }: Props) {
 
       <div className={dashStyles.body}>
         {/* ── KPIs ──────────────────────────────────────────────── */}
-        <div className={dashStyles.kpiGrid} style={anim(120)}>
+        <div className={`${dashStyles.kpiGrid} ${styles.kpiGrid5}`} style={anim(120)}>
           {[
             {
               label: "Total Investido",
@@ -225,6 +226,11 @@ export default function GrowthDashboard({ data }: Props) {
               label: "Leads Gerados",
               value: totalLeads,
               sub: "formulários preenchidos",
+            },
+            {
+              label: "MQLs",
+              value: totalMQLs || "—",
+              sub: "leads qualificados p/ marketing",
             },
             {
               label: "CPL Médio",
@@ -278,21 +284,35 @@ export default function GrowthDashboard({ data }: Props) {
                 rate: pct(totalLeads, totalPageViews),
               }}
             />
+            {totalMQLs > 0 && (
+              <FunnelBar
+                label="MQLs"
+                value={totalMQLs}
+                max={funnelMax}
+                conversionFrom={{
+                  label: "Leads",
+                  rate: pct(totalMQLs, totalLeads),
+                }}
+              />
+            )}
             {totalSQLs > 0 && (
               <FunnelBar
                 label="SQLs"
                 value={totalSQLs}
                 max={funnelMax}
                 conversionFrom={{
-                  label: "Leads",
-                  rate: pct(totalSQLs, totalLeads),
+                  label: totalMQLs > 0 ? "MQLs" : "Leads",
+                  rate: pct(totalSQLs, totalMQLs > 0 ? totalMQLs : totalLeads),
                 }}
               />
             )}
             <div className={dashStyles.funnelStats}>
               <div>Lead rate: {pct(totalLeads, totalAlcance)} do alcance</div>
+              {totalMQLs > 0 && (
+                <div>MQL rate: {pct(totalMQLs, totalLeads)} dos leads</div>
+              )}
               {totalSQLs > 0 && (
-                <div>SQL rate: {pct(totalSQLs, totalLeads)} dos leads</div>
+                <div>SQL rate: {pct(totalSQLs, totalMQLs > 0 ? totalMQLs : totalLeads)} dos {totalMQLs > 0 ? "MQLs" : "leads"}</div>
               )}
             </div>
           </div>
@@ -357,6 +377,7 @@ export default function GrowthDashboard({ data }: Props) {
                   <th>Investimento</th>
                   <th>Alcance</th>
                   <th>Leads</th>
+                  <th>MQLs</th>
                   <th>CPL</th>
                   <th>SQLs</th>
                 </tr>
@@ -368,6 +389,7 @@ export default function GrowthDashboard({ data }: Props) {
                     <td>{brl(r.Investimento)}</td>
                     <td>{r.Alcance.toLocaleString("pt-BR")}</td>
                     <td>{r.Leads}</td>
+                    <td>{safeNum(r.MQLs) || "—"}</td>
                     <td>{r.CPL}</td>
                     <td>{safeNum(r.SQLs) || "—"}</td>
                   </tr>

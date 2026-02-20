@@ -1,3 +1,10 @@
+/* ── 5-col KPI grid override ─────────────────────────────────── */
+@media (min-width: 1024px) {
+  .kpiGrid5 {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+
 /* ── Daily table ─────────────────────────────────────────────── */
 .dailyTable {
   width: 100%;
